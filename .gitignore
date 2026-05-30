@@ -1,1 +1,2 @@
-/sampleFiles/
+/sampleFiles/**/lib/
+/sampleFiles/*/index.html
