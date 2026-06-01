@@ -18,6 +18,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   const app = new ThreeApp(wrapper);
 
   // 非同期の読み込み処理 @@@
+  // ロードが終わったら、そこで初めて次の処理に移っていきたい、
+  // 非同期処理が完了するのを待つ時に、awaitを使う
   await app.load();
 
   // 読み込み処理が終わったあとで描画を開始 @@@

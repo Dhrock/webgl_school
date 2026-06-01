@@ -225,6 +225,7 @@ class ThreeApp {
     const loader = new THREE.TextureLoader();
     const texture = await loader.loadAsync(imagePath);
     this.material.map = texture;
+    this.material.side = THREE.DoubleSide; // プレーンの両面を描画するようにする @@@
   }
 
   /**

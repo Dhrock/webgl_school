@@ -33,7 +33,7 @@ class ThreeApp {
    * レンダラー定義のための定数
    */
   static RENDERER_PARAM = {
-    clearColor: 0xffffff, // フォグを使う場合、背景をクリアする色にも注意！ @@@
+    clearColor: 0x000000, // フォグを使う場合、背景をクリアする色にも注意！ @@@
     width: window.innerWidth,
     height: window.innerHeight,
   };
@@ -50,7 +50,7 @@ class ThreeApp {
    */
   static AMBIENT_LIGHT_PARAM = {
     color: 0xffffff,
-    intensity: 0.1,
+    intensity: 0.5,
   };
   /**
    * マテリアル定義のための定数
@@ -62,7 +62,7 @@ class ThreeApp {
    * フォグの定義のための定数 @@@
    */
   static FOG_PARAM = {
-    color: 0xffffff, // フォグの色
+    color: 0x000000, // フォグの色
     near: 1.0,       // フォグの掛かり始めるカメラからの距離
     far: 15.0        // フォグが完全に掛かるカメラからの距離
   };

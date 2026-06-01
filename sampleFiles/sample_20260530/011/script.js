@@ -25,7 +25,7 @@ class ThreeApp {
     fovy: 60,
     aspect: window.innerWidth / window.innerHeight,
     near: 0.1,
-    far: 20.0,
+    far: 50.0,
     position: new THREE.Vector3(0.0, 2.0, 10.0),
     lookAt: new THREE.Vector3(0.0, 0.0, 0.0),
   };
@@ -141,7 +141,13 @@ class ThreeApp {
       torus.position.y = (Math.random() * 2.0 - 1.0) * transformScale;
       torus.position.z = (Math.random() * 2.0 - 1.0) * transformScale;
       // シーンに追加するのではなく、グループに追加する @@@
-      this.group.add(torus);
+      // 2つに1つだけグループに追加して、groupだけを回転させる
+      if (i % 2 === 0) {
+        this.group.add(torus);
+      } else {
+        this.scene.add(torus);
+      }
+
       this.torusArray.push(torus);
     }
 
@@ -194,6 +200,7 @@ class ThreeApp {
     if (this.isDown === true) {
       // 個々のトーラスではなくグループを回転させると…… @@@
       this.group.rotation.y += 0.05;
+      this.group.position.x = 5;
     }
 
     // レンダラーで描画
