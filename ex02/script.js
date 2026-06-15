@@ -23,7 +23,7 @@ class ThreeApp {
    * レンダラー定義のための定数
    */
   static RENDERER_PARAM = {
-    clearColor: 0x666666,
+    clearColor: 0xffffff,
     width: window.innerWidth,
     height: window.innerHeight,
   };
@@ -63,6 +63,7 @@ class ThreeApp {
   axesHelper;       // 軸ヘルパー
   isDown;           // キーの押下状態用フラグ
   group;            // グループ @@@
+  fan01RotationDirection; // fan01 の回転方向
 
   /**
    * コンストラクタ
@@ -157,11 +158,20 @@ class ThreeApp {
     // コントロール
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
 
+    // 滑らかにカメラコントローラーを制御する
+    this.controls.target.set(0,1,0);
+    this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.2;
+
+    this.renderer.setAnimationLoop(this.render);
+
     // this のバインド
     this.render = this.render.bind(this);
 
     // キーの押下状態を保持するフラグ
     this.isDown = false;
+    this.fan01RotationDirection = -1;
+    this.fan02RotationDirection = -1;
 
     // キーの押下や離す操作を検出できるようにする
     window.addEventListener('keydown', (keyEvent) => {
@@ -199,12 +209,35 @@ class ThreeApp {
       // ブレードを回転させる
       this.group_blade.rotation.y -= 0.1;
 
-      this.group_fan01.rotation.x -= 0.01;
+      // 扇風機頭部を回転させる（0〜90度回転）
+      const fan01MinRotation = 0.0;
+      const fan01MaxRotation = Math.PI / 2.0;
+      const fan01RotationSpeed = 0.01;
 
-      console.log(this.group_fan01.rotation.x);
+      this.group_fan01.rotation.x += fan01RotationSpeed * this.fan01RotationDirection;
 
-      // 扇風機全体を回転させる
-      // this.group_fan02.rotation.y -= 0.01;
+      if (this.group_fan01.rotation.x <= fan01MinRotation) {
+        this.group_fan01.rotation.x = fan01MinRotation;
+        this.fan01RotationDirection = 1;
+      } else if (this.group_fan01.rotation.x >= fan01MaxRotation) {
+        this.group_fan01.rotation.x = fan01MaxRotation;
+        this.fan01RotationDirection = -1;
+      }
+
+      // 扇風機全体を回転させる（0〜180度回転）
+      const fan02MinRotation = Math.PI / 2 * -1;
+      const fan02MaxRotation = Math.PI / 2;
+      const fan02RotationSpeed = 0.01;
+
+      this.group_fan02.rotation.y += fan02RotationSpeed * this.fan02RotationDirection;
+
+      if (this.group_fan02.rotation.y <= fan02MinRotation) {
+        this.group_fan02.rotation.y = fan02MinRotation;
+        this.fan02RotationDirection = 1;
+      } else if (this.group_fan02.rotation.y >= fan02MaxRotation) {
+        this.group_fan02.rotation.y = fan02MaxRotation;
+        this.fan02RotationDirection = -1;
+      }
     }
 
     // レンダラーで描画
