@@ -41,7 +41,7 @@ class ThreeApp {
    * カメラ定義のための定数
    */
   static CAMERA_PARAM = {
-    fovy: 60,
+    fovy: 65,
     aspect: window.innerWidth / window.innerHeight,
     near: 0.1,
     far: 100.0,
@@ -396,9 +396,9 @@ class ThreeApp {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
 
     // ヘルパー
-    const axesBarLength = 10.0;
-    this.axesHelper = new THREE.AxesHelper(axesBarLength);
-    this.scene.add(this.axesHelper);
+    // const axesBarLength = 10.0;
+    // this.axesHelper = new THREE.AxesHelper(axesBarLength);
+    // this.scene.add(this.axesHelper);
 
     // キーの押下状態を保持するフラグ
     this.isDown = false;
