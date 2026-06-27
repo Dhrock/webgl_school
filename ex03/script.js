@@ -109,6 +109,13 @@ class ThreeApp {
   pointMaterial03;      // 飛行機の中間地点の目印用マテリアル
   pointPosition;      // 飛行機の出発地点・到着地点の目印の位置
   pointArray;         // 飛行機の出発地点・到着地点の目印の配列
+  pointTangentArray;  // 各ポイントの単位接ベクトルの配列
+  routeMaterial;      // 飛行機の軌道用マテリアル
+  routeArray;         // 飛行機の軌道の配列
+  routeCurveArray;    // 飛行機が移動する曲線の配列
+  routeLengthArray;   // 飛行機が移動する曲線の長さの配列
+  routeIndex;         // 現在移動中の曲線の番号
+  routeProgress;      // 現在移動中の曲線上の進捗
 
 
   /**
@@ -229,7 +236,7 @@ class ThreeApp {
     this.scene.add(this.earth);
 
     // ポイントのジオメトリを生成 @@@
-    this.pointGeometry = new THREE.SphereGeometry(0.2, 32, 32);
+    this.pointGeometry = new THREE.SphereGeometry(0.1, 32, 32);
     // ポイントのマテリアルとメッシュ
     this.pointMaterial01 = new THREE.MeshPhongMaterial({color: 0xff0000});
     this.pointMaterial02 = new THREE.MeshPhongMaterial({color: 0xaff9ff});
@@ -278,8 +285,96 @@ class ThreeApp {
       this.pointArray.push(point03);
     }
 
+    const createUnitTangents = (startPoint, endPoint) => {
+      // 出発地点と到着地点の2点を結ぶ直線の単位ベクトル
+      const chordDirection = new THREE.Vector3()
+        .subVectors(endPoint.position, startPoint.position)
+        .normalize();
+      
+      // 出発点と到着点の単位ベクトル
+      const startNormal = startPoint.position.clone().normalize();
+      const endNormal = endPoint.position.clone().normalize();
+
+      // 2点を結ぶ直線の向きから、地球中心方向の成分を取り除いて接ベクトルにする
+      const startTangent = chordDirection.clone()
+        .sub(startNormal.clone().multiplyScalar(chordDirection.dot(startNormal)))
+        .normalize();
+      const endTangent = chordDirection.clone()
+        .sub(endNormal.clone().multiplyScalar(chordDirection.dot(endNormal)))
+        .normalize();
+
+      return [startTangent, endTangent];
+    };
+
+    const point01 = this.pointArray[0];
+    const point02 = this.pointArray[1];
+    const point03 = this.pointArray[2];
+
+    this.pointTangentArray = [];
+    if (point03 != null) {
+      const [point01Tangent, point03TangentFromPoint01] = createUnitTangents(point01, point03);
+      const [point03TangentToPoint02, point02Tangent] = createUnitTangents(point03, point02);
+      this.pointTangentArray.push(
+        point01Tangent,
+        point03TangentFromPoint01,
+        point03TangentToPoint02,
+        point02Tangent,
+      );
+    } else {
+      const [point01Tangent, point02Tangent] = createUnitTangents(point01, point02);
+      this.pointTangentArray.push(point01Tangent, point02Tangent);
+    }
+
+    const createParabola = (startPoint, endPoint, startTangent, endTangent) => {
+      const startPosition = startPoint.position;
+      const endPosition = endPoint.position;
+      const endReverseTangent = endTangent.clone().negate();
+      const startToEnd = startPosition.clone().sub(endPosition);
+      const tangentDot = startTangent.dot(endReverseTangent);
+      const denominator = 1.0 - tangentDot * tangentDot;
+      let controlPosition;
+
+      // 始点側・終点側の接線が交わる位置を、放物線の制御点にする
+      if (Math.abs(denominator) > 0.0001) {
+        const startScale = (tangentDot * endReverseTangent.dot(startToEnd) - startTangent.dot(startToEnd)) / denominator;
+        const endScale = (endReverseTangent.dot(startToEnd) - tangentDot * startTangent.dot(startToEnd)) / denominator;
+        const startControlPosition = startPosition.clone().add(startTangent.clone().multiplyScalar(startScale));
+        const endControlPosition = endPosition.clone().add(endReverseTangent.multiplyScalar(endScale));
+        controlPosition = startControlPosition.add(endControlPosition).multiplyScalar(0.5);
+      } else {
+        controlPosition = startPosition.clone()
+          .add(endPosition)
+          .multiplyScalar(0.5)
+          .normalize()
+          .multiplyScalar(ThreeApp.EARTH_RADIUS * 1.5);
+      }
+
+      const curve = new THREE.QuadraticBezierCurve3(
+        startPosition.clone(),
+        controlPosition,
+        endPosition.clone(),
+      );
+      const routeGeometry = new THREE.BufferGeometry().setFromPoints(curve.getPoints(64));
+      const route = new THREE.Line(routeGeometry, this.routeMaterial);
+      this.scene.add(route);
+      this.routeArray.push(route);
+      this.routeCurveArray.push(curve);
+      this.routeLengthArray.push(curve.getLength());
+    };
+
+    this.routeMaterial = new THREE.LineBasicMaterial({color: 0x00ff88});
+    this.routeArray = [];
+    this.routeCurveArray = [];
+    this.routeLengthArray = [];
+    if (point03 != null) {
+      createParabola(point01, point03, this.pointTangentArray[0], this.pointTangentArray[1]);
+      createParabola(point03, point02, this.pointTangentArray[2], this.pointTangentArray[3]);
+    } else {
+      createParabola(point01, point02, this.pointTangentArray[0], this.pointTangentArray[1]);
+    }
+
     // コーンのジオメトリを生成 @@@
-    this.coneGeometry = new THREE.ConeGeometry(0.4, 0.5, 32);
+    this.coneGeometry = new THREE.ConeGeometry(0.3, 0.6, 32);
     // 飛行機のマテリアルとメッシュ
     this.satelliteMaterial = new THREE.MeshPhongMaterial({color: 0xff00dd});
     this.satellite = new THREE.Mesh(this.coneGeometry, this.satelliteMaterial);
@@ -287,7 +382,13 @@ class ThreeApp {
     this.satellite.scale.setScalar(0.5);
     
     this.satellite.position.copy(this.pointArray[0].position);
-    this.satelliteDirection = new THREE.Vector3(0.0, 1.0, 0.0).normalize();
+    this.satelliteDirection = this.pointTangentArray[0].clone();
+    this.satellite.quaternion.setFromUnitVectors(
+      new THREE.Vector3(0.0, 1.0, 0.0),
+      this.satelliteDirection,
+    );
+    this.routeIndex = 0;
+    this.routeProgress = 0.0;
 
     console.log(this.satellite.position);
 
@@ -304,6 +405,42 @@ class ThreeApp {
   }
 
   /**
+   * 飛行機をルート上で移動させる
+   */
+  moveSatelliteOnRoute() {
+    if (this.routeCurveArray.length === 0) { return; }
+
+    let remainDistance = ThreeApp.SATELLITE_SPEED;
+    while (remainDistance > 0.0) {
+      const routeLength = this.routeLengthArray[this.routeIndex];
+      if (routeLength <= 0.0) { return; }
+
+      const currentDistance = this.routeProgress * routeLength;
+      const nextDistance = currentDistance + remainDistance;
+      if (nextDistance <= routeLength) {
+        this.routeProgress = nextDistance / routeLength;
+        remainDistance = 0.0;
+      } else if (this.routeIndex < this.routeCurveArray.length - 1) {
+        remainDistance = nextDistance - routeLength;
+        this.routeIndex += 1;
+        this.routeProgress = 0.0;
+      } else {
+        this.routeProgress = 1.0;
+        remainDistance = 0.0;
+        break;
+      }
+    }
+
+    const currentCurve = this.routeCurveArray[this.routeIndex];
+    this.satellite.position.copy(currentCurve.getPointAt(this.routeProgress));
+    this.satelliteDirection.copy(currentCurve.getTangentAt(this.routeProgress).normalize());
+    this.satellite.quaternion.setFromUnitVectors(
+      new THREE.Vector3(0.0, 1.0, 0.0),
+      this.satelliteDirection,
+    );
+  }
+
+  /**
    * 描画処理
    */
   render() {
@@ -315,7 +452,8 @@ class ThreeApp {
 
     // フラグに応じてオブジェクトの状態を変化させる
     if (this.isDown === true) {
-      this.earth.rotation.y += 0.01;
+      // this.earth.rotation.y += 0.01;
+      this.moveSatelliteOnRoute();
     }
 
     // レンダラーで描画
